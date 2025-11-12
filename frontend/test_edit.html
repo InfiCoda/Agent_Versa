@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>测试编辑功能</title>
+</head>
+<body>
+    <h1>编辑功能测试</h1>
+    <button onclick="testEdit()">测试编辑</button>
+    <div id="result"></div>
+    
+    <script>
+        async function testEdit() {
+            try {
+                const response = await fetch('http://localhost:8000/api/tasks/1');
+                const task = await response.json();
+                console.log('任务数据:', task);
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(task, null, 2) + '</pre>';
+            } catch (error) {
+                console.error('错误:', error);
+                document.getElementById('result').innerHTML = '错误: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
+

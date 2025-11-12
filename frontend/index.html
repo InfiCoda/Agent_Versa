@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能体通用化特征评估工具</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- 导航栏 -->
+        <nav class="navbar">
+            <div class="container">
+                <h1 class="logo">智能体评估工具</h1>
+                <ul class="nav-menu">
+                    <li><a href="#" @click="currentPage='tasks'" :class="{active: currentPage==='tasks'}">任务管理</a></li>
+                    <li><a href="#" @click="currentPage='indicators'" :class="{active: currentPage==='indicators'}">指标体系</a></li>
+                    <li><a href="#" @click="currentPage='analysis'" :class="{active: currentPage==='analysis'}">分析报告</a></li>
+                    <li><a href="#" @click="currentPage='system'" :class="{active: currentPage==='system'}">系统监控</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- 主要内容 -->
+        <main class="container main-content">
+            <!-- 任务管理页面 -->
+            <div v-if="currentPage === 'tasks'" class="page">
+                <h2>评估任务管理</h2>
+                
+                <!-- 创建任务按钮 -->
+                <button class="btn btn-primary" @click="showCreateTask = true">创建新任务</button>
+                
+                <!-- 任务列表 -->
+                <div class="task-list">
+                    <div v-for="task in tasks" :key="task.id" class="task-card">
+                        <div class="task-header">
+                            <h3>{{ task.name }}</h3>
+                            <span class="status-badge" :class="'status-' + task.status">
+                                {{ getStatusText(task.status) }}
+                            </span>
+                        </div>
+                        <p class="task-description">{{ task.description || '无描述' }}</p>
+                        <div class="task-info">
+                            <span>进度: {{ task.progress }}</span>
+                            <span>样本数: {{ task.processed_samples }}/{{ task.total_samples }}</span>
+                            <span>创建时间: {{ formatDate(task.created_at) }}</span>
+                        </div>
+                        <div class="task-actions">
+                            <button class="btn btn-small" @click="viewTask(task.id)">查看详情</button>
+                            <button v-if="task.status === 'pending' || task.status === 'failed'" 
+                                    class="btn btn-small" 
+                                    @click.prevent="editTask(task.id)">编辑</button>
+                            <button v-if="task.status === 'pending' || task.status === 'failed'" 
+                                    class="btn btn-small btn-primary" 
+                                    @click="startTask(task.id)">启动任务</button>
+                            <button class="btn btn-small btn-danger" @click="deleteTask(task.id)">删除</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 编辑任务模态框 -->
+                <div v-if="showEditTask && editingTask" class="modal">
+                    <div class="modal-content">
+                        <h3>编辑评估任务</h3>
+                        <form @submit.prevent="saveEditedTask">
+                            <div class="form-group">
+                                <label>任务名称 *</label>
+                                <input type="text" v-model="editingTask.name" required>
+                            </div>
+                            <div class="form-group">
+                                <label>任务描述</label>
+                                <textarea v-model="editingTask.description" rows="3"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>智能体API端点</label>
+                                <input type="text" v-model="editingTask.agent_config.api_endpoint" 
+                                       placeholder="https://api.example.com/v1/chat">
+                            </div>
+                            <div class="form-group">
+                                <label>API密钥（可选）</label>
+                                <input type="password" v-model="editingTask.agent_config.api_key" 
+                                       placeholder="留空表示不修改">
+                            </div>
+                            <div class="form-group">
+                                <label>数据集类型</label>
+                                <select v-model="editingTask.dataset_config.type">
+                                    <option value="json">JSON文件</option>
+                                    <option value="csv">CSV文件</option>
+                                    <option value="api">API接口</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>数据集路径/URL</label>
+                                <input type="text" v-model="editingTask.dataset_config.file_path" 
+                                       placeholder="留空则使用默认: app/data/samples.json">
+                                <small style="color: #666;">提示: 留空将自动使用默认数据集 app/data/samples.json</small>
+                            </div>
+                            <div class="form-group">
+                                <label>选择评估指标</label>
+                                <div class="checkbox-group">
+                                    <div v-for="ind in availableIndicators" :key="ind.id" class="checkbox-item">
+                                        <input type="checkbox" :value="ind.id" 
+                                               v-model="editingTask.selected_indicators"
+                                               :id="'edit-checkbox-' + ind.id">
+                                        <span class="checkbox-label">{{ ind.display_name }}</span>
+                                        <label class="checkbox-wrapper" :for="'edit-checkbox-' + ind.id">
+                                            <span class="checkbox-custom"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">保存修改</button>
+                                <button type="button" class="btn" @click="showEditTask = false; editingTask = null">取消</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 创建任务模态框 -->
+                <div v-if="showCreateTask" class="modal">
+                    <div class="modal-content">
+                        <h3>创建评估任务</h3>
+                        <form @submit.prevent="createTask">
+                            <div class="form-group">
+                                <label>任务名称 *</label>
+                                <input type="text" v-model="newTask.name" required>
+                            </div>
+                            <div class="form-group">
+                                <label>任务描述</label>
+                                <textarea v-model="newTask.description" rows="3"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>智能体API端点</label>
+                                <input type="text" v-model="newTask.agent_config.api_endpoint" 
+                                       placeholder="https://api.example.com/v1/chat">
+                            </div>
+                            <div class="form-group">
+                                <label>API密钥（可选）</label>
+                                <input type="password" v-model="newTask.agent_config.api_key">
+                            </div>
+                            <div class="form-group">
+                                <label>数据集类型</label>
+                                <select v-model="newTask.dataset_config.type">
+                                    <option value="json">JSON文件</option>
+                                    <option value="csv">CSV文件</option>
+                                    <option value="api">API接口</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>数据集路径/URL</label>
+                                <input type="text" v-model="newTask.dataset_config.file_path" 
+                                       placeholder="留空则使用默认: app/data/samples.json">
+                                <small style="color: #666;">提示: 留空将自动使用默认数据集 app/data/samples.json</small>
+                            </div>
+                            <div class="form-group">
+                                <label>选择评估指标</label>
+                                <div class="checkbox-group">
+                                    <div v-for="ind in availableIndicators" :key="ind.id" class="checkbox-item">
+                                        <input type="checkbox" :value="ind.id" 
+                                               v-model="newTask.selected_indicators"
+                                               :id="'new-checkbox-' + ind.id">
+                                        <span class="checkbox-label">{{ ind.display_name }}</span>
+                                        <label class="checkbox-wrapper" :for="'new-checkbox-' + ind.id">
+                                            <span class="checkbox-custom"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">创建任务</button>
+                                <button type="button" class="btn" @click="showCreateTask = false">取消</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 指标体系页面 -->
+            <div v-if="currentPage === 'indicators'" class="page">
+                <h2>评估指标体系</h2>
+                
+                <div class="indicator-categories">
+                    <div v-for="category in indicatorCategories" :key="category.key" class="category-section">
+                        <h3>{{ category.name }}</h3>
+                        <div class="indicator-grid">
+                            <div v-for="ind in getIndicatorsByCategory(category.key)" 
+                                 :key="ind.id" class="indicator-card">
+                                <h4>{{ ind.display_name }}</h4>
+                                <p>{{ ind.description }}</p>
+                                <div class="indicator-meta">
+                                    <span class="badge" :class="ind.is_builtin ? 'badge-success' : 'badge-info'">
+                                        {{ ind.is_builtin ? '内置' : '自定义' }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 分析报告页面 -->
+            <div v-if="currentPage === 'analysis'" class="page">
+                <h2>分析报告</h2>
+                
+                <div v-if="selectedResult">
+                    <!-- 总体得分卡片 -->
+                    <div class="overall-score-card">
+                        <div class="score-main">
+                            <div class="score-label">总体得分</div>
+                            <div class="score-value" :class="getScoreClass(selectedResult.overall_score)">
+                                {{ (selectedResult.overall_score * 100).toFixed(1) }}%
+                            </div>
+                            <div class="score-description">{{ getScoreDescription(selectedResult.overall_score) }}</div>
+                        </div>
+                        <div class="score-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" 
+                                     :style="{width: (selectedResult.overall_score * 100) + '%'}"
+                                     :class="getScoreClass(selectedResult.overall_score)"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 指标概览网格 -->
+                    <div class="indicators-overview">
+                        <h3>指标概览</h3>
+                        <div class="indicators-grid">
+                            <div v-for="item in selectedResult.result_items" :key="item.indicator_id" 
+                                 class="indicator-card-mini">
+                                <div class="indicator-name">{{ item.indicator_name }}</div>
+                                <div class="indicator-score" :class="getScoreClass(item.score)">
+                                    {{ (item.score * 100).toFixed(1) }}%
+                                </div>
+                                <div class="indicator-progress">
+                                    <div class="mini-progress-bar">
+                                        <div class="mini-progress-fill" 
+                                             :style="{width: (item.score * 100) + '%'}"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 可视化图表区域 -->
+                    <div class="charts-section">
+                        <div class="chart-container">
+                            <h3>性能雷达图</h3>
+                            <div class="radar-chart-container">
+                                <canvas id="radarChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <h3>指标对比柱状图</h3>
+                            <div class="bar-chart-container">
+                                <canvas id="barChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 详细结果表格 -->
+                    <div class="result-details-table">
+                        <h3>详细结果</h3>
+                        <table class="results-table">
+                            <thead>
+                                <tr>
+                                    <th>指标名称</th>
+                                    <th>得分</th>
+                                    <th>百分比</th>
+                                    <th>加权得分</th>
+                                    <th>等级</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="item in selectedResult.result_items" :key="item.indicator_id">
+                                    <td><strong>{{ item.indicator_name }}</strong></td>
+                                    <td>{{ item.score.toFixed(4) }}</td>
+                                    <td>
+                                        <span class="score-badge" :class="getScoreClass(item.score)">
+                                            {{ (item.score * 100).toFixed(1) }}%
+                                        </span>
+                                    </td>
+                                    <td>{{ item.weighted_score ? item.weighted_score.toFixed(4) : '-' }}</td>
+                                    <td>
+                                        <span class="level-badge" :class="getLevelClass(item.score)">
+                                            {{ getLevelText(item.score) }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 统计摘要 -->
+                    <div class="statistics-summary" v-if="selectedResult.summary">
+                        <h3>统计摘要</h3>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-label">测试样本数</div>
+                                <div class="stat-value">{{ selectedResult.summary.total_samples || 0 }}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">评估指标数</div>
+                                <div class="stat-value">{{ selectedResult.summary.indicators_count || 0 }}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">最高得分</div>
+                                <div class="stat-value">{{ getMaxScore(selectedResult.result_items).toFixed(2) }}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">最低得分</div>
+                                <div class="stat-value">{{ getMinScore(selectedResult.result_items).toFixed(2) }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 文本分析报告 -->
+                    <div class="analysis-report" v-if="selectedResult.analysis_report">
+                        <h3>深度分析</h3>
+                        <div class="report-content">{{ selectedResult.analysis_report }}</div>
+                    </div>
+                </div>
+                <div v-else class="empty-state">
+                    <p>请先从任务列表中选择已完成的任务查看结果</p>
+                </div>
+            </div>
+
+            <!-- 系统监控页面 -->
+            <div v-if="currentPage === 'system'" class="page">
+                <h2>系统监控</h2>
+                
+                <div v-if="systemStats" class="stats-grid">
+                    <div class="stat-card">
+                        <h3>CPU使用率</h3>
+                        <div class="stat-value">{{ systemStats.cpu.percent }}%</div>
+                        <div class="stat-detail">核心数: {{ systemStats.cpu.count }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>内存使用</h3>
+                        <div class="stat-value">{{ systemStats.memory.percent }}%</div>
+                        <div class="stat-detail">
+                            已用: {{ formatBytes(systemStats.memory.used) }} / 
+                            {{ formatBytes(systemStats.memory.total) }}
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>磁盘使用</h3>
+                        <div class="stat-value">
+                            {{ (systemStats.disk.used / systemStats.disk.total * 100).toFixed(1) }}%
+                        </div>
+                        <div class="stat-detail">
+                            已用: {{ formatBytes(systemStats.disk.used) }} / 
+                            {{ formatBytes(systemStats.disk.total) }}
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-primary" @click="refreshSystemStats">刷新统计</button>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
+

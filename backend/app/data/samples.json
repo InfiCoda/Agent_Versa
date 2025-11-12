@@ -1,0 +1,28 @@
+[
+    {
+        "input": "什么是人工智能？",
+        "expected_output": "人工智能是计算机科学的一个分支，旨在创建能够执行通常需要人类智能的任务的系统。",
+        "reference": ["人工智能是计算机科学的一个分支，旨在创建能够执行通常需要人类智能的任务的系统。", "AI是让机器能够像人类一样思考和学习的领域。"]
+    },
+    {
+        "input": "编写一个Python函数来计算斐波那契数列",
+        "expected_output": "def fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)",
+        "reference": ["def fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)"]
+    },
+    {
+        "input": "请总结以下文本的主要内容：机器学习是人工智能的一个子领域，它使计算机能够在没有明确编程的情况下学习和改进。",
+        "expected_output": "机器学习是AI的子领域，使计算机能够自主学习和改进。",
+        "reference": ["机器学习是AI的子领域，使计算机能够自主学习和改进。", "机器学习是人工智能的一个分支，专注于让计算机通过数据学习。"]
+    },
+    {
+        "input": "解释什么是深度学习",
+        "expected_output": "深度学习是机器学习的一个子集，使用多层神经网络来模拟人脑的学习过程。",
+        "reference": ["深度学习是机器学习的一个子集，使用多层神经网络来模拟人脑的学习过程。", "深度学习使用深度神经网络来学习数据的复杂模式。"]
+    },
+    {
+        "input": "Python中如何读取CSV文件？",
+        "expected_output": "可以使用pandas库：import pandas as pd; df = pd.read_csv('file.csv')",
+        "reference": ["可以使用pandas库：import pandas as pd; df = pd.read_csv('file.csv')"]
+    }
+]
+
