@@ -23,6 +23,86 @@
         "input": "Python中如何读取CSV文件？",
         "expected_output": "可以使用pandas库：import pandas as pd; df = pd.read_csv('file.csv')",
         "reference": ["可以使用pandas库：import pandas as pd; df = pd.read_csv('file.csv')"]
+    },
+    {
+        "input": "如何用JavaScript实现数组去重？",
+        "expected_output": "可以使用Set：const unique = [...new Set(array)] 或使用filter：array.filter((item, index) => array.indexOf(item) === index)",
+        "reference": ["可以使用Set：const unique = [...new Set(array)]", "使用filter：array.filter((item, index) => array.indexOf(item) === index)"]
+    },
+    {
+        "input": "什么是自然语言处理？",
+        "expected_output": "自然语言处理（NLP）是人工智能的一个分支，专注于使计算机能够理解、解释和生成人类语言。",
+        "reference": ["自然语言处理（NLP）是人工智能的一个分支，专注于使计算机能够理解、解释和生成人类语言。", "NLP是让计算机理解和处理人类语言的AI技术。"]
+    },
+    {
+        "input": "编写一个函数来检查字符串是否为回文",
+        "expected_output": "def is_palindrome(s):\n    s = s.lower().replace(' ', '')\n    return s == s[::-1]",
+        "reference": ["def is_palindrome(s):\n    s = s.lower().replace(' ', '')\n    return s == s[::-1]"]
+    },
+    {
+        "input": "解释RESTful API的设计原则",
+        "expected_output": "RESTful API遵循REST架构风格，包括：使用HTTP方法（GET、POST、PUT、DELETE）、无状态通信、资源导向的URL设计、统一的接口等。",
+        "reference": ["RESTful API遵循REST架构风格，包括：使用HTTP方法、无状态通信、资源导向的URL设计。", "REST API使用标准HTTP方法，通过URL表示资源，保持无状态。"]
+    },
+    {
+        "input": "如何在Python中处理异常？",
+        "expected_output": "使用try-except块：\ntry:\n    # 可能出错的代码\n    result = 10 / 0\nexcept ZeroDivisionError:\n    print('除数不能为零')",
+        "reference": ["使用try-except块捕获和处理异常", "try:\n    # 代码\nexcept Exception as e:\n    # 处理异常"]
+    },
+    {
+        "input": "什么是数据库索引？为什么需要它？",
+        "expected_output": "数据库索引是一种数据结构，用于快速定位和访问数据库表中的数据。它可以显著提高查询性能，减少数据扫描时间。",
+        "reference": ["数据库索引是用于快速查找数据的数据结构，提高查询性能。", "索引类似于书籍目录，帮助快速定位数据，加快查询速度。"]
+    },
+    {
+        "input": "编写一个SQL查询来查找销售额最高的前10个产品",
+        "expected_output": "SELECT product_name, SUM(amount) as total_sales\nFROM sales\nGROUP BY product_name\nORDER BY total_sales DESC\nLIMIT 10",
+        "reference": ["SELECT product_name, SUM(amount) as total_sales\nFROM sales\nGROUP BY product_name\nORDER BY total_sales DESC\nLIMIT 10"]
+    },
+    {
+        "input": "解释什么是微服务架构",
+        "expected_output": "微服务架构是一种将应用程序构建为一系列小型、独立、可部署服务的架构模式。每个服务专注于特定业务功能，通过API进行通信。",
+        "reference": ["微服务架构将应用拆分为多个独立的小服务，每个服务负责特定功能。", "微服务是小型、独立的服务，通过API通信，可独立部署和扩展。"]
+    },
+    {
+        "input": "如何在React中管理组件状态？",
+        "expected_output": "可以使用useState Hook：const [state, setState] = useState(initialValue)，或使用useReducer处理复杂状态，也可以使用Context API进行全局状态管理。",
+        "reference": ["使用useState Hook管理本地状态", "useState用于函数组件状态管理，useReducer用于复杂状态逻辑。"]
+    },
+    {
+        "input": "什么是Docker容器？它与虚拟机有什么区别？",
+        "expected_output": "Docker容器是轻量级的虚拟化技术，共享主机操作系统内核。与虚拟机相比，容器启动更快、资源占用更少，但隔离性较弱。",
+        "reference": ["Docker容器是轻量级虚拟化，共享OS内核，比VM更轻量、启动更快。", "容器共享主机内核，VM有独立内核，容器更轻量但隔离性较弱。"]
+    },
+    {
+        "input": "编写一个函数来合并两个已排序的数组",
+        "expected_output": "def merge_sorted_arrays(arr1, arr2):\n    result = []\n    i, j = 0, 0\n    while i < len(arr1) and j < len(arr2):\n        if arr1[i] <= arr2[j]:\n            result.append(arr1[i])\n            i += 1\n        else:\n            result.append(arr2[j])\n            j += 1\n    result.extend(arr1[i:])\n    result.extend(arr2[j:])\n    return result",
+        "reference": ["使用双指针技术合并两个已排序数组", "遍历两个数组，比较元素并合并到结果数组"]
+    },
+    {
+        "input": "解释什么是Git分支和合并",
+        "expected_output": "Git分支是代码的独立开发线，允许在不影响主分支的情况下进行开发。合并是将一个分支的更改整合到另一个分支的操作。",
+        "reference": ["Git分支是独立的代码开发线，合并是将分支更改整合到主分支。", "分支用于并行开发，合并用于整合不同分支的代码更改。"]
+    },
+    {
+        "input": "什么是API网关？它的作用是什么？",
+        "expected_output": "API网关是微服务架构中的单一入口点，负责请求路由、负载均衡、身份验证、限流等功能，简化客户端与后端服务的交互。",
+        "reference": ["API网关是微服务的统一入口，处理路由、认证、限流等功能。", "网关作为客户端和后端服务之间的中介，提供统一接口和通用功能。"]
+    },
+    {
+        "input": "如何在Python中实现单例模式？",
+        "expected_output": "可以使用装饰器：\ndef singleton(cls):\n    instances = {}\n    def get_instance(*args, **kwargs):\n        if cls not in instances:\n            instances[cls] = cls(*args, **kwargs)\n        return instances[cls]\n    return get_instance",
+        "reference": ["使用装饰器实现单例模式，确保类只有一个实例。", "通过装饰器或__new__方法实现单例模式"]
+    },
+    {
+        "input": "解释什么是缓存以及它的优缺点",
+        "expected_output": "缓存是临时存储数据的高速存储区域，用于快速访问常用数据。优点：提高性能、减少数据库负载。缺点：数据可能过期、需要内存空间、增加系统复杂性。",
+        "reference": ["缓存是高速临时存储，提高访问速度，但可能数据过期。", "缓存加速数据访问，减少数据库压力，但需要管理缓存失效和一致性。"]
+    },
+    {
+        "input": "编写一个正则表达式来匹配有效的电子邮件地址",
+        "expected_output": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+        "reference": ["^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", "使用正则表达式验证邮箱格式"]
     }
 ]
 

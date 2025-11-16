@@ -32,9 +32,14 @@ class IndicatorCalculator:
     @staticmethod
     def calculate_bleu(reference: List[str], candidate: str, n: int = 4) -> float:
         """计算BLEU分数（简化版本）"""
+        if not candidate or not reference:
+            return 0.0
+        
         # 将文本转换为n-gram列表
         def get_ngrams(text: str, n: int) -> List[str]:
             words = text.lower().split()
+            if len(words) == 0:
+                return []
             return [' '.join(words[i:i+n]) for i in range(len(words)-n+1)]
         
         # 获取候选文本的n-gram
@@ -49,7 +54,11 @@ class IndicatorCalculator:
         if total_ngrams == 0:
             return 0.0
         
+        # 对每个参考文本计算匹配数，取最大值
+        max_matches = 0
         for ref in reference:
+            if not ref:
+                continue
             ref_ngrams = []
             for i in range(1, n + 1):
                 ref_ngrams.extend(get_ngrams(ref, i))
@@ -57,21 +66,29 @@ class IndicatorCalculator:
             ref_counter = Counter(ref_ngrams)
             cand_counter = Counter(candidate_ngrams)
             
+            ref_matches = 0
             for ngram in cand_counter:
                 if ngram in ref_counter:
-                    matches += min(cand_counter[ngram], ref_counter[ngram])
+                    ref_matches += min(cand_counter[ngram], ref_counter[ngram])
+            
+            max_matches = max(max_matches, ref_matches)
         
-        precision = matches / total_ngrams if total_ngrams > 0 else 0.0
+        precision = max_matches / total_ngrams if total_ngrams > 0 else 0.0
         return precision
     
     @staticmethod
     def calculate_rouge_l(reference: List[str], candidate: str) -> Dict[str, float]:
         """计算ROUGE-L分数（最长公共子序列）"""
+        if not candidate or not reference:
+            return {"score": 0.0, "rouge_l": 0.0, "rouge_l_precision": 0.0, "rouge_l_recall": 0.0}
+        
         def lcs(text1: str, text2: str) -> int:
             """计算最长公共子序列长度"""
             words1 = text1.lower().split()
             words2 = text2.lower().split()
             m, n = len(words1), len(words2)
+            if m == 0 or n == 0:
+                return 0
             dp = [[0] * (n + 1) for _ in range(m + 1)]
             
             for i in range(1, m + 1):
@@ -88,9 +105,11 @@ class IndicatorCalculator:
         candidate_len = len(candidate.split())
         
         if candidate_len == 0:
-            return {"rouge_l": 0.0, "rouge_l_precision": 0.0, "rouge_l_recall": 0.0}
+            return {"score": 0.0, "rouge_l": 0.0, "rouge_l_precision": 0.0, "rouge_l_recall": 0.0}
         
         for ref in reference:
+            if not ref:
+                continue
             ref_len = len(ref.split())
             if ref_len == 0:
                 continue
@@ -104,7 +123,7 @@ class IndicatorCalculator:
             })
         
         if not lcs_scores:
-            return {"rouge_l": 0.0, "rouge_l_precision": 0.0, "rouge_l_recall": 0.0}
+            return {"score": 0.0, "rouge_l": 0.0, "rouge_l_precision": 0.0, "rouge_l_recall": 0.0}
         
         # 取最大值
         best_score = max(lcs_scores, key=lambda x: x["recall"])
@@ -113,6 +132,7 @@ class IndicatorCalculator:
         ) if (best_score["precision"] + best_score["recall"]) > 0 else 0.0
         
         return {
+            "score": f1,
             "rouge_l": f1,
             "rouge_l_precision": best_score["precision"],
             "rouge_l_recall": best_score["recall"]
@@ -169,15 +189,46 @@ class IndicatorCalculator:
     @staticmethod
     def calculate_indicator(
         indicator_name: str,
-        data: Dict[str, Any]
+        data: Dict[str, Any],
+        calculation_function: str = None
     ) -> Dict[str, Any]:
-        """根据指标名称计算对应的指标值"""
+        """根据指标名称计算对应的指标值
+        
+        Args:
+            indicator_name: 指标名称（如 "accuracy", "precision"）
+            data: 计算所需的数据
+            calculation_function: 计算函数名称（如果提供，优先使用）
+        """
+        # 如果提供了calculation_function，优先使用它
+        func_name = calculation_function or indicator_name
+        
         calculator_map = {
             "accuracy": lambda d: {"score": IndicatorCalculator.calculate_accuracy(
                 d.get("y_true", []), d.get("y_pred", [])
             )},
-            "precision_recall_f1": lambda d: IndicatorCalculator.calculate_precision_recall_f1(
-                d.get("y_true", []), d.get("y_pred", [])
+            "precision_recall_f1": lambda d, ind_name=indicator_name: IndicatorCalculator._extract_precision_recall_f1(
+                IndicatorCalculator.calculate_precision_recall_f1(
+                    d.get("y_true", []), d.get("y_pred", [])
+                ),
+                ind_name
+            ),
+            "precision": lambda d: IndicatorCalculator._extract_precision_recall_f1(
+                IndicatorCalculator.calculate_precision_recall_f1(
+                    d.get("y_true", []), d.get("y_pred", [])
+                ),
+                "precision"
+            ),
+            "recall": lambda d: IndicatorCalculator._extract_precision_recall_f1(
+                IndicatorCalculator.calculate_precision_recall_f1(
+                    d.get("y_true", []), d.get("y_pred", [])
+                ),
+                "recall"
+            ),
+            "f1_score": lambda d: IndicatorCalculator._extract_precision_recall_f1(
+                IndicatorCalculator.calculate_precision_recall_f1(
+                    d.get("y_true", []), d.get("y_pred", [])
+                ),
+                "f1_score"
             ),
             "bleu": lambda d: {"score": IndicatorCalculator.calculate_bleu(
                 d.get("reference", []), d.get("candidate", "")
@@ -199,8 +250,23 @@ class IndicatorCalculator:
             ),
         }
         
-        if indicator_name not in calculator_map:
-            raise ValueError(f"不支持的指标: {indicator_name}")
-        
-        return calculator_map[indicator_name](data)
+        # 首先尝试使用calculation_function，如果不存在则使用indicator_name
+        if func_name in calculator_map:
+            return calculator_map[func_name](data)
+        elif indicator_name in calculator_map:
+            return calculator_map[indicator_name](data)
+        else:
+            raise ValueError(f"不支持的指标: {indicator_name} (calculation_function: {func_name})")
+    
+    @staticmethod
+    def _extract_precision_recall_f1(result: Dict[str, float], indicator_name: str) -> Dict[str, float]:
+        """从precision_recall_f1结果中提取指定指标的值"""
+        if indicator_name == "precision":
+            return {"score": result.get("precision", 0.0)}
+        elif indicator_name == "recall":
+            return {"score": result.get("recall", 0.0)}
+        elif indicator_name == "f1_score" or indicator_name == "f1":
+            return {"score": result.get("f1", 0.0)}
+        else:
+            return result
 

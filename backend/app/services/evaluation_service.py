@@ -72,11 +72,14 @@ class EvaluationService:
                     try:
                         result = IndicatorCalculator.calculate_indicator(
                             indicator.name,
-                            indicator_data
+                            indicator_data,
+                            calculation_function=indicator.calculation_function
                         )
                         sample_results[indicator.id] = result
                     except Exception as e:
                         print(f"计算指标 {indicator.name} 时出错: {e}")
+                        import traceback
+                        traceback.print_exc()
                         sample_results[indicator.id] = {"score": 0.0, "error": str(e)}
                 
                 results.append(sample_results)
@@ -228,20 +231,47 @@ class EvaluationService:
         
         if indicator_name in ["accuracy", "precision", "recall", "f1_score"]:
             # 对于分类任务，需要将输出转换为标签
-            y_true = sample.get("expected_output", sample.get("label", ""))
-            y_pred = agent_response
-            # 简单比较：如果响应包含期望输出的关键词，则认为正确
-            # 实际应用中需要根据具体任务类型调整
-            if isinstance(y_true, str) and isinstance(y_pred, str):
-                # 简化的准确率计算：字符串相似度
+            y_true_str = sample.get("expected_output", sample.get("label", ""))
+            y_pred_str = agent_response
+            
+            # 计算文本相似度来判断是否正确
+            # 使用简单的字符串匹配和相似度计算
+            if isinstance(y_true_str, str) and isinstance(y_pred_str, str):
+                # 计算相似度：检查关键词匹配
+                y_true_lower = y_true_str.lower()
+                y_pred_lower = y_pred_str.lower()
+                
+                # 方法1：检查是否包含关键信息
+                # 提取期望输出中的关键词（去除常见停用词）
+                import re
+                stop_words = {'的', '是', '在', '了', '和', '有', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '这'}
+                y_true_words = set(re.findall(r'\b\w+\b', y_true_lower))
+                y_true_words = {w for w in y_true_words if w not in stop_words and len(w) > 1}
+                
+                y_pred_words = set(re.findall(r'\b\w+\b', y_pred_lower))
+                y_pred_words = {w for w in y_pred_words if w not in stop_words and len(w) > 1}
+                
+                # 计算Jaccard相似度
+                if len(y_true_words) == 0:
+                    # 如果期望输出没有有效词，使用简单的包含检查
+                    is_match = y_true_lower in y_pred_lower or y_pred_lower in y_true_lower
+                else:
+                    intersection = len(y_true_words & y_pred_words)
+                    union = len(y_true_words | y_pred_words)
+                    similarity = intersection / union if union > 0 else 0.0
+                    # 相似度阈值：超过0.3认为匹配
+                    is_match = similarity >= 0.3
+                
                 return {
-                    "y_true": [1 if y_true.lower() in y_pred.lower() or y_pred.lower() in y_true.lower() else 0],
-                    "y_pred": [1]
+                    "y_true": [1 if is_match else 0],
+                    "y_pred": [1 if is_match else 0]  # 预测值应该基于实际判断
                 }
-            return {
-                "y_true": [y_true] if not isinstance(y_true, list) else y_true,
-                "y_pred": [y_pred] if not isinstance(y_pred, list) else y_pred
-            }
+            else:
+                # 如果不是字符串，尝试直接使用
+                return {
+                    "y_true": [y_true_str] if not isinstance(y_true_str, list) else y_true_str,
+                    "y_pred": [y_pred_str] if not isinstance(y_pred_str, list) else y_pred_str
+                }
         elif indicator_name in ["bleu", "rouge_l"]:
             reference = sample.get("reference", sample.get("expected_output", []))
             if isinstance(reference, str):
