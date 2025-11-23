@@ -112,10 +112,6 @@ cd frontend && python -m http.server 8080
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
 
-## 快速开始
-
-详细的使用说明请参考 [QUICKSTART.md](QUICKSTART.md)
-
 ## 项目结构说明
 
 ### 后端 (`backend/app/`)
