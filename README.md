@@ -57,7 +57,14 @@ chmod +x scripts/setup.sh
 ./scripts/setup.sh
 ```
 
-### 3. 启动后端服务
+### 3. 初始化数据库
+
+```bash
+chmod +x scripts/init_database.sh
+./scripts/init_database.sh
+```
+
+### 4. 启动后端服务
 
 **Windows:**
 ```bash
@@ -72,7 +79,7 @@ chmod +x scripts/run_backend.sh
 
 后端服务默认运行在 `http://localhost:8000`
 
-### 4. 启动前端服务
+### 5. 启动前端服务
 
 **Windows:**
 ```bash
@@ -399,12 +406,3 @@ result_items: [
 ### 自定义评估逻辑
 
 修改 `backend/app/services/evaluation_service.py` 中的评估执行逻辑。
-
-## 许可证
-
-本项目为学术研究项目。
-
-## 联系方式
-
-如有问题或建议，请联系项目组。
-
